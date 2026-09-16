@@ -60,6 +60,12 @@ button{min-height:44px;border:0;border-radius:13px;padding:10px 14px;font-weight
 </section>
 
 <section class="card">
+<h2>📌 Tus porciones habituales</h2>
+<div class="notice" style="margin-bottom:8px">Te propongo estas cantidades para encajarlas fácilmente en tus 1.400 kcal. Las marcadas como aproximadas conviene confirmarlas con la etiqueta del producto.</div>
+<div id="portionGuide"></div>
+</section>
+
+<section class="card">
 <h2>⚖️ Registrar peso</h2>
 <div class="row"><input id="weightInput" type="number" step="0.1" placeholder="Ej. 64,8"><button id="saveWeight" class="primary">Guardar peso</button></div>
 <div id="history" style="margin-top:8px"></div>
@@ -70,13 +76,17 @@ button{min-height:44px;border:0;border-radius:13px;padding:10px 14px;font-weight
 <script>
 const GOAL=1400, KEY='mc_cal_v3';
 const defaultFavs=[
-  {name:'Mini barrita de cereales',qty:'1 unidad'},
-  {name:'Jamón serrano',qty:'30 g'},
-  {name:'Pan',qty:'40 g'},
-  {name:'Yogur griego',qty:'125 g'},
-  {name:'Café con hielo',qty:'1 café'},
+  {name:'Pan blanco',qty:'50 g'},
+  {name:'Pan integral',qty:'50 g'},
+  {name:'Pavo',qty:'30 g'},
+  {name:'Yogur griego Aldi',qty:'1 yogur (125 g)'},
+  {name:'Frambuesas',qty:'100 g'},
+  {name:'Chocolate negro',qty:'10 g'},
   {name:'Plátano',qty:'1 unidad'},
-  {name:'Manzana',qty:'1 unidad'}
+  {name:'Manzana',qty:'1 unidad'},
+  {name:'Arroz de pescado Mercadona',qty:'1 bandeja (280 g)'},
+  {name:'Arroz de verduras Mercadona',qty:'1 bandeja (280 g)'},
+  {name:'Galta de cerdo rustida BonÀrea',qty:'150 g'}
 ];
 let old=JSON.parse(localStorage.getItem('mc_cal_v2')||'null');
 let state=JSON.parse(localStorage.getItem(KEY)||'null')||{days:old?.days||{},weights:old?.weights||[],favs:defaultFavs};
@@ -85,14 +95,28 @@ const day=()=>state.days[today()]||(state.days[today()]={foods:[]});
 const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
 const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 
-// Valores orientativos por 100 g / 100 ml, y porciones habituales cuando procede.
+// Base de alimentos. Los valores con marca concreta se han fijado con la etiqueta/ficha disponible;
+// los que llevan "aprox" son referencias hasta que tengamos una foto de la etiqueta exacta.
 const DB={
+ 'yogur griego aldi':{k100:125,p100:.036,unitKcal:156,unitP:4.5,units:['yogur','yogures','unidad','unidades'],exact:true},
+ 'yogur griego':{k100:125,p100:.036,unitKcal:156,unitP:4.5,units:['yogur','yogures','unidad','unidades'],exact:true},
+ 'frambuesas':{k100:52,p100:.012},
+ 'pan blanco':{k100:250,p100:.08},
+ 'pan integral':{k100:250,p100:.09},
+ 'panecillo integral aldi':{k100:250,p100:.09},
+ 'pavo':{k100:110,p100:.24},
+ 'chocolate negro':{k100:600,p100:.08},
+ 'arroz de pescado mercadona':{k100:212,p100:.067,unitKcal:594,unitP:19,units:['bandeja','bandejas','unidad','unidades'],exact:true},
+ 'arroz de pescado hacendado':{k100:212,p100:.067,unitKcal:594,unitP:19,units:['bandeja','bandejas','unidad','unidades'],exact:true},
+ 'arroz de verduras mercadona':{k100:122,p100:.031,unitKcal:342,unitP:8.7,units:['bandeja','bandejas','unidad','unidades'],exact:true},
+ 'arroz de verduras hacendado':{k100:122,p100:.031,unitKcal:342,unitP:8.7,units:['bandeja','bandejas','unidad','unidades'],exact:true},
+ 'galta de cerdo rustida bonarea':{k100:229,p100:.217,approx:true},
+ 'galta de cerdo rustida':{k100:229,p100:.217,approx:true},
  'mini barrita de cereales':{k100:400,p100:.07,unitKcal:80,unitP:.014,units:['barrita','barritas','unidad','unidades']},
  'barrita de cereales':{k100:400,p100:.07,unitKcal:100,unitP:.018,units:['barrita','barritas','unidad','unidades']},
  'jamón serrano':{k100:240,p100:.31},'jamon serrano':{k100:240,p100:.31},'jamón york':{k100:110,p100:.20},'jamon york':{k100:110,p100:.20},
- 'pollo':{k100:165,p100:.31},'pechuga de pollo':{k100:165,p100:.31},'pavo':{k100:110,p100:.24},
+ 'pollo':{k100:165,p100:.31},'pechuga de pollo':{k100:165,p100:.31},
  'huevo':{k100:143,p100:.126,unitKcal:78,unitP:6.5,units:['huevo','huevos','unidad','unidades']},
- 'pan':{k100:250,p100:.08},'yogur griego':{k100:120,p100:.10,unitKcal:150,unitP:12,units:['yogur','yogures','unidad','unidades']},
  'yogur':{k100:70,p100:.04,unitKcal:88,unitP:5,units:['yogur','yogures','unidad','unidades']},
  'leche':{k100:50,p100:.034},'café con hielo':{k100:2,p100:0,unitKcal:2,unitP:0,units:['café','cafe','unidad','unidades']},
  'café':{k100:2,p100:0,unitKcal:2,unitP:0,units:['café','cafe','unidad','unidades']},'cafe':{k100:2,p100:0,unitKcal:2,unitP:0,units:['cafe','unidad','unidades']},
@@ -100,12 +124,14 @@ const DB={
  'plátano':{k100:89,p100:.011,unitKcal:105,unitP:1.3,units:['plátano','platanos','plátanos','unidad','unidades']},'platano':{k100:89,p100:.011,unitKcal:105,unitP:1.3,units:['platano','platanos','unidad','unidades']},
  'manzana':{k100:52,p100:.003,unitKcal:95,unitP:.5,units:['manzana','manzanas','unidad','unidades']},
  'pera':{k100:57,p100:.004,unitKcal:100,unitP:.6,units:['pera','peras','unidad','unidades']},
+ 'naranja':{k100:47,p100:.009,unitKcal:70,unitP:1.4,units:['naranja','naranjas','unidad','unidades']},
+ 'kiwi':{k100:61,p100:.011,unitKcal:45,unitP:.8,units:['kiwi','kiwis','unidad','unidades']},
+ 'fresas':{k100:32,p100:.007,unitKcal:48,unitP:1.1,units:['fresa','fresas','unidad','unidades']},
  'patata':{k100:77,p100:.02},'arroz':{k100:130,p100:.027},'pasta':{k100:150,p100:.055},
  'lentejas':{k100:115,p100:.09},'garbanzos':{k100:164,p100:.089},'ensalada':{k100:25,p100:.015},'tomate':{k100:18,p100:.009},
  'aguacate':{k100:160,p100:.02},'atún':{k100:116,p100:.26},'atun':{k100:116,p100:.26},'salmón':{k100:208,p100:.20},'salmon':{k100:208,p100:.20},
  'aceite':{k100:884,p100:0,unitKcal:44,unitP:0,units:['cucharadita','cucharaditas','cucharada','cucharadas']},
- 'chocolate negro':{k100:600,p100:.08},'galleta':{k100:480,p100:.06},'queso':{k100:350,p100:.25},
- 'frutos secos':{k100:600,p100:.20},'almendras':{k100:579,p100:.21},'avena':{k100:389,p100:.17},
+ 'galleta':{k100:480,p100:.06},'queso':{k100:350,p100:.25},'frutos secos':{k100:600,p100:.20},'almendras':{k100:579,p100:.21},'avena':{k100:389,p100:.17},
  'lomo embuchado':{k100:300,p100:.32},'lomo embuchado extra':{k100:300,p100:.32},'proteína de cáñamo':{k100:400,p100:.50},'semillas de chía':{k100:486,p100:.17},'chia':{k100:486,p100:.17}
 };
 const aliases={'pechuga de pollo':'pollo','jamon':'jamón serrano','jamón':'jamón serrano','cafe con hielo':'café con hielo','café solo':'café','cafe solo':'café'};
@@ -137,6 +163,21 @@ function estimate(text){
  if(!results.length){let r=estimateOne(text);if(r)results.push(r)}
  if(!results.length)return {kcal:0,protein:0,items:[],error:'No he reconocido los alimentos. Prueba, por ejemplo: “1 mini barrita, 30 g de jamón y café con hielo”.'};
  return {kcal:Math.round(results.reduce((a,x)=>a+x.kcal,0)),protein:Math.round(results.reduce((a,x)=>a+x.protein,0)),items:results};
+}
+function renderPortionGuide(){
+ const items=[
+  ['Pan blanco','50 g','≈ 125 kcal','aprox.'],
+  ['Pan integral','50 g','≈ 125 kcal','aprox.'],
+  ['Pavo','30 g','≈ 33 kcal','aprox.'],
+  ['Yogur griego Aldi','1 yogur (125 g)','156 kcal','etiqueta'],
+  ['Frambuesas','100 g','≈ 52 kcal',''],
+  ['Chocolate negro','10 g','≈ 60 kcal','depende de la marca'],
+  ['Fruta','1 pieza / 100–150 g','≈ 45–100 kcal','según fruta'],
+  ['Arroz de pescado Mercadona','1 bandeja (280 g)','594 kcal','ficha actual'],
+  ['Arroz de verduras Mercadona','1 bandeja (280 g)','342 kcal','ficha actual'],
+  ['Galta de cerdo rustida BonÀrea','150 g','≈ 344 kcal','pendiente de confirmar con etiqueta']
+ ];
+ document.getElementById('portionGuide').innerHTML=items.map(x=>'<div class="fav"><span><b>'+x[0]+'</b><br><span class="small">'+x[1]+' · '+x[2]+' '+(x[3]?'· '+x[3]:'')+'</span></span></div>').join('');
 }
 function render(){
  let d=day(), kcal=d.foods.reduce((a,x)=>a+x.kcal,0), p=d.foods.reduce((a,x)=>a+x.protein,0), rem=Math.max(0,GOAL-kcal);
@@ -172,10 +213,10 @@ document.getElementById('addFav').onclick=()=>{
  save();
  document.getElementById('favName').value='';document.getElementById('favQty').value='';
  renderFav();
- document.getElementById('message').textContent='Guardado: '+r.kcal+' kcal aprox. Ya no te pedirá las kcal.';
+ document.getElementById('message').textContent='Guardado: '+r.kcal+' kcal. Ya no te pedirá las kcal.';
 };
 let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install').hidden=false});document.getElementById('install').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install').hidden=true}};
-if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});renderPortionGuide();render();
 </script>
 </body>
 </html>
