@@ -53,8 +53,9 @@ button{min-height:44px;border:0;border-radius:13px;padding:10px 14px;font-weight
 
 <section class="card">
 <h2>⭐ Mis alimentos habituales</h2>
-<div class="row"><input id="favName" placeholder="Alimento"><input id="favKcal" type="number" placeholder="kcal/100 g"></div>
-<button id="addFav" class="soft" style="margin-top:8px">Guardar alimento</button>
+<div class="notice" style="margin-bottom:8px">Escribe el alimento y la cantidad. La app calcula las kcal automáticamente; no tienes que introducirlas.</div>
+<div class="row"><input id="favName" placeholder="Ej. mi yogur habitual"><input id="favQty" placeholder="Ej. 1 unidad o 125 g"></div>
+<button id="addFav" class="soft" style="margin-top:8px">Guardar en habituales</button>
 <div id="favList"></div>
 </section>
 
@@ -67,31 +68,75 @@ button{min-height:44px;border:0;border-radius:13px;padding:10px 14px;font-weight
 <section class="card notice">Objetivo inicial de 1.400 kcal/día. Las estimaciones dependen de cantidades, marcas y preparación. Si me escribes una comida con cantidades concretas, puedo ayudarte a afinar el cálculo.</section>
 </main>
 <script>
-const GOAL=1400, KEY='mc_cal_v2';
-let state=JSON.parse(localStorage.getItem(KEY)||'null')||{days:{},weights:[],favs:[{name:'Mini barrita de cereales',kcal:400},{name:'Jamón serrano',kcal:240},{name:'Pan',kcal:250},{name:'Yogur griego',kcal:120}]};
+const GOAL=1400, KEY='mc_cal_v3';
+const defaultFavs=[
+  {name:'Mini barrita de cereales',qty:'1 unidad'},
+  {name:'Jamón serrano',qty:'30 g'},
+  {name:'Pan',qty:'40 g'},
+  {name:'Yogur griego',qty:'125 g'},
+  {name:'Café con hielo',qty:'1 café'},
+  {name:'Plátano',qty:'1 unidad'},
+  {name:'Manzana',qty:'1 unidad'}
+];
+let old=JSON.parse(localStorage.getItem('mc_cal_v2')||'null');
+let state=JSON.parse(localStorage.getItem(KEY)||'null')||{days:old?.days||{},weights:old?.weights||[],favs:defaultFavs};
 const today=()=>new Date().toISOString().slice(0,10);
 const day=()=>state.days[today()]||(state.days[today()]={foods:[]});
 const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
 const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const DB={huevo:[78,.13],huevos:[78,.13],pollo:[165,.31],'pechuga de pollo':[165,.31],pavo:[110,.24],'jamón serrano':[240,.31],jamon:[120,.20],pan:[250,.08],'yogur griego':[120,.10],yogur:[70,.04],leche:[50,.034],café:[2,0],cafe:[2,0],plátano:[89,.011],platano:[89,.011],manzana:[52,.003],patata:[77,.02],arroz:[130,.027],pasta:[150,.055],lentejas:[115,.09],ensalada:[25,.015],tomate:[18,.009],aguacate:[160,.02],atún:[116,.26],atun:[116,.26],salmón:[208,.20],salmon:[208,.20],aceite:[884,0],'chocolate negro':[600,.08],galleta:[480,.06],'barrita de cereales':[400,.07],queso:[350,.25]};
+
+// Valores orientativos por 100 g / 100 ml, y porciones habituales cuando procede.
+const DB={
+ 'mini barrita de cereales':{k100:400,p100:.07,unitKcal:80,unitP:.014,units:['barrita','barritas','unidad','unidades']},
+ 'barrita de cereales':{k100:400,p100:.07,unitKcal:100,unitP:.018,units:['barrita','barritas','unidad','unidades']},
+ 'jamón serrano':{k100:240,p100:.31},'jamon serrano':{k100:240,p100:.31},'jamón york':{k100:110,p100:.20},'jamon york':{k100:110,p100:.20},
+ 'pollo':{k100:165,p100:.31},'pechuga de pollo':{k100:165,p100:.31},'pavo':{k100:110,p100:.24},
+ 'huevo':{k100:143,p100:.126,unitKcal:78,unitP:6.5,units:['huevo','huevos','unidad','unidades']},
+ 'pan':{k100:250,p100:.08},'yogur griego':{k100:120,p100:.10,unitKcal:150,unitP:12,units:['yogur','yogures','unidad','unidades']},
+ 'yogur':{k100:70,p100:.04,unitKcal:88,unitP:5,units:['yogur','yogures','unidad','unidades']},
+ 'leche':{k100:50,p100:.034},'café con hielo':{k100:2,p100:0,unitKcal:2,unitP:0,units:['café','cafe','unidad','unidades']},
+ 'café':{k100:2,p100:0,unitKcal:2,unitP:0,units:['café','cafe','unidad','unidades']},'cafe':{k100:2,p100:0,unitKcal:2,unitP:0,units:['cafe','unidad','unidades']},
+ 'azúcar':{k100:387,p100:0},'azucar':{k100:387,p100:0},'sacarina':{k100:0,p100:0,unitKcal:0,unitP:0,units:['sobre','sobres','unidad','unidades']},
+ 'plátano':{k100:89,p100:.011,unitKcal:105,unitP:1.3,units:['plátano','platanos','plátanos','unidad','unidades']},'platano':{k100:89,p100:.011,unitKcal:105,unitP:1.3,units:['platano','platanos','unidad','unidades']},
+ 'manzana':{k100:52,p100:.003,unitKcal:95,unitP:.5,units:['manzana','manzanas','unidad','unidades']},
+ 'pera':{k100:57,p100:.004,unitKcal:100,unitP:.6,units:['pera','peras','unidad','unidades']},
+ 'patata':{k100:77,p100:.02},'arroz':{k100:130,p100:.027},'pasta':{k100:150,p100:.055},
+ 'lentejas':{k100:115,p100:.09},'garbanzos':{k100:164,p100:.089},'ensalada':{k100:25,p100:.015},'tomate':{k100:18,p100:.009},
+ 'aguacate':{k100:160,p100:.02},'atún':{k100:116,p100:.26},'atun':{k100:116,p100:.26},'salmón':{k100:208,p100:.20},'salmon':{k100:208,p100:.20},
+ 'aceite':{k100:884,p100:0,unitKcal:44,unitP:0,units:['cucharadita','cucharaditas','cucharada','cucharadas']},
+ 'chocolate negro':{k100:600,p100:.08},'galleta':{k100:480,p100:.06},'queso':{k100:350,p100:.25},
+ 'frutos secos':{k100:600,p100:.20},'almendras':{k100:579,p100:.21},'avena':{k100:389,p100:.17},
+ 'lomo embuchado':{k100:300,p100:.32},'lomo embuchado extra':{k100:300,p100:.32},'proteína de cáñamo':{k100:400,p100:.50},'semillas de chía':{k100:486,p100:.17},'chia':{k100:486,p100:.17}
+};
+const aliases={'pechuga de pollo':'pollo','jamon':'jamón serrano','jamón':'jamón serrano','cafe con hielo':'café con hielo','café solo':'café','cafe solo':'café'};
+const keys=Object.keys(DB).sort((a,b)=>b.length-a.length);
+function norm(t){return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
+function findEntry(text){let n=norm(text);for(const k of keys){let nk=norm(k);if(n.includes(nk)) return [k,DB[k]]}for(const [a,k] of Object.entries(aliases)){if(n.includes(norm(a)))return [k,DB[k]]}return null}
+function parseNumber(s){return parseFloat(String(s).replace(',','.'))}
+function estimateOne(text){
+ let raw=text.trim(), n=norm(raw), entry=findEntry(raw); if(!entry)return null;
+ let [name,item]=entry;
+ // Quantity immediately before the food, e.g. 150 g pollo / 30 gramos de jamón.
+ let qre=new RegExp('(?:^|[,;+]|y\\s+)(?:de\\s+)?(\\d+(?:[.,]\\d+)?)\\s*(g|gr|gramos|ml|cl|kg|l|unidad|unidades|ud|uds)?\\s*(?:de\\s+)?'+norm(name).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i');
+ let m=n.match(qre), qty=null, unit=null;
+ if(m){qty=parseNumber(m[1]);unit=m[2]||'g'}
+ // Fallback: quantity anywhere near the food.
+ if(qty===null){let before=n.slice(0,n.indexOf(norm(name)));let m2=before.match(/(\\d+(?:[.,]\\d+)?)\\s*(g|gr|gramos|ml|cl|kg|l|unidad|unidades|ud|uds)\\s*(?:de\\s*)?$/);if(m2){qty=parseNumber(m2[1]);unit=m2[2]}}
+ if(qty===null && item.unitKcal!=null){qty=1;unit='unidad'}
+ if(qty===null)qty=100,unit='g';
+ let kcal,protein;
+ if(item.unitKcal!=null && /unidad|unidades|ud|uds|huevo|huevos|barrita|yogur|manzana|plátano|platano|café|cafe|sobre|sobres|cucharadita|cucharadas|cucharada/.test(norm(unit)||'')) {kcal=item.unitKcal*qty;protein=(item.unitP||0)*qty}
+ else {let grams=qty;if(unit==='kg')grams*=1000;if(unit==='l')grams*=1000;if(unit==='cl')grams*=10;kcal=item.k100*grams/100;protein=item.p100*grams}
+ return {name,kcal,protein,qty,unit};
+}
 function estimate(text){
- let t=text.toLowerCase(), total=0, protein=0, found=[];
- for(const [name,[k100,p100]] of Object.entries(DB)){
-   if(t.includes(name)){
-     let re=new RegExp('(\\\\d+(?:[.,]\\\\d+)?)\\\\s*g[^a-z]*'+name.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&'),'i');
-     let m=t.match(re), grams=m?parseFloat(m[1].replace(',','.')):null;
-     if(!grams){
-       if(name.startsWith('huevo')) grams=50*(t.match(/\\\\b2\\\\b/) ? 2:1);
-       else if(name==='aceite') grams=5;
-       else grams=100;
-     }
-     total+=k100*grams/100; protein+=p100*grams; found.push(name);
-   }
- }
- if(!found.length){
-   return {kcal:0,protein:0,found:[],error:'No he reconocido los alimentos. Prueba con algo como “150 g de pollo y 50 g de pan”.'};
- }
- return {kcal:Math.round(total),protein:Math.round(protein),found};
+ // Split common meal separators, but keep phrases such as “café con hielo”.
+ let parts=text.replace(/\s+con\s+(?=\d|un |una |dos |tres |café|cafe|hielo|azúcar|azucar|sacarina)/gi,', ').split(/[,;+]|\s+y\s+/i).map(x=>x.trim()).filter(Boolean);
+ let results=[];for(const part of parts){let r=estimateOne(part);if(r)results.push(r)}
+ // If splitting failed, try the whole phrase (important for “1 mini barrita con jamón”).
+ if(!results.length){let r=estimateOne(text);if(r)results.push(r)}
+ if(!results.length)return {kcal:0,protein:0,items:[],error:'No he reconocido los alimentos. Prueba, por ejemplo: “1 mini barrita, 30 g de jamón y café con hielo”.'};
+ return {kcal:Math.round(results.reduce((a,x)=>a+x.kcal,0)),protein:Math.round(results.reduce((a,x)=>a+x.protein,0)),items:results};
 }
 function render(){
  let d=day(), kcal=d.foods.reduce((a,x)=>a+x.kcal,0), p=d.foods.reduce((a,x)=>a+x.protein,0), rem=Math.max(0,GOAL-kcal);
@@ -101,18 +146,36 @@ function render(){
  let groups=['Desayuno','Media mañana','Comida','Merienda','Cena','Picoteo'],html='';
  for(const m of groups){let a=d.foods.map((x,i)=>({...x,i})).filter(x=>x.meal===m);if(!a.length)continue;html+='<div class="meal"><div class="mealhead"><span>'+m+'</span><span>'+Math.round(a.reduce((s,x)=>s+x.kcal,0))+' kcal</span></div>';for(const x of a)html+='<div class="food"><span>'+esc(x.text)+'</span><span><b>'+x.kcal+' kcal</b> <button data-del="'+x.i+'" aria-label="Eliminar">×</button></span></div>';html+='</div>'}
  document.getElementById('todayList').innerHTML=html||'<div class="notice">Todavía no has añadido nada.</div>';
- document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{d.foods.splice(+b.dataset.del,1);save();render()});
- renderFav();renderHistory();
+ document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{d.foods.splice(+b.dataset.del,1);save();render()});renderFav();renderHistory();
 }
-function renderFav(){document.getElementById('favList').innerHTML=state.favs.map((f,i)=>'<div class="fav"><span>'+esc(f.name)+' · '+f.kcal+' kcal/100 g</span><button class="soft" data-fav="'+i+'">Usar</button></div>').join('');document.querySelectorAll('[data-fav]').forEach(b=>b.onclick=()=>{let f=state.favs[+b.dataset.fav];document.getElementById('foodText').value='100 g de '+f.name})}
+function renderFav(){
+ document.getElementById('favList').innerHTML=state.favs.map((f,i)=>{
+   let r=f.kcal!=null?f.kcal:estimate((f.qty||'100 g')+' de '+f.name).kcal;
+   return '<div class="fav"><span>'+esc(f.name)+' · '+esc(f.qty||'100 g')+' · <b>≈ '+Math.round(r)+' kcal</b></span><button class="soft" data-fav="'+i+'">Usar</button></div>'
+ }).join('');
+ document.querySelectorAll('[data-fav]').forEach(b=>b.onclick=()=>{
+   let f=state.favs[+b.dataset.fav];
+   document.getElementById('foodText').value=(f.qty?f.qty+' de ':'100 g de ')+f.name;
+   document.getElementById('message').textContent='Listo: al añadirlo, la app calculará las kcal automáticamente.';
+ });
+}
 function renderHistory(){document.getElementById('history').innerHTML=state.weights.slice().reverse().map(x=>'<div><span>'+new Date(x.date+'T12:00:00').toLocaleDateString('es-ES')+'</span><b>'+x.kg.toFixed(1)+' kg</b></div>').join('')||'<div class="notice">Aún no hay pesos registrados.</div>'}
-document.getElementById('foodForm').onsubmit=e=>{e.preventDefault();let text=document.getElementById('foodText').value.trim();if(!text)return;let r=estimate(text),msg=document.getElementById('message');if(r.error){msg.textContent=r.error;return}day().foods.push({text,meal:document.getElementById('meal').value,kcal:r.kcal,protein:r.protein});save();msg.textContent='Añadido: '+r.kcal+' kcal. Reconocido: '+r.found.join(', ')+'.';document.getElementById('foodText').value='';render()};
+document.getElementById('foodForm').onsubmit=e=>{e.preventDefault();let text=document.getElementById('foodText').value.trim();if(!text)return;let r=estimate(text),msg=document.getElementById('message');if(r.error){msg.textContent=r.error;return}day().foods.push({text,meal:document.getElementById('meal').value,kcal:r.kcal,protein:r.protein});save();msg.textContent='Añadido: '+r.kcal+' kcal. '+r.items.map(x=>x.qty+' '+x.unit+' '+x.name).join(' · ');document.getElementById('foodText').value='';render()};
 document.getElementById('clear').onclick=()=>{if(confirm('¿Borrar todas las comidas de hoy?')){day().foods=[];save();render()}};
 document.getElementById('saveWeight').onclick=()=>{let kg=parseFloat(document.getElementById('weightInput').value.replace(',','.'));if(!Number.isFinite(kg)||kg<30||kg>250){alert('Introduce un peso válido.');return}state.weights.push({date:today(),kg});save();document.getElementById('weightInput').value='';render()};
-document.getElementById('addFav').onclick=()=>{let name=document.getElementById('favName').value.trim(),k=+document.getElementById('favKcal').value;if(!name||!Number.isFinite(k)||k<=0){alert('Introduce alimento y kcal por 100 g.');return}state.favs.push({name,kcal:k});save();document.getElementById('favName').value='';document.getElementById('favKcal').value='';renderFav()};
+document.getElementById('addFav').onclick=()=>{
+ let name=document.getElementById('favName').value.trim(),qty=document.getElementById('favQty').value.trim()||'100 g';
+ if(!name){document.getElementById('message').textContent='Escribe el nombre del alimento.';return}
+ let r=estimate(qty+' de '+name);
+ if(r.error){document.getElementById('message').textContent='No reconozco ese alimento todavía. Prueba con un alimento habitual como pollo, pan, jamón, yogur, huevo, fruta, arroz, pasta, queso, lomo embuchado, etc.';return}
+ state.favs.push({name,qty,kcal:r.kcal});
+ save();
+ document.getElementById('favName').value='';document.getElementById('favQty').value='';
+ renderFav();
+ document.getElementById('message').textContent='Guardado: '+r.kcal+' kcal aprox. Ya no te pedirá las kcal.';
+};
 let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install').hidden=false});document.getElementById('install').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install').hidden=true}};
-if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});render();
 </script>
 </body>
 </html>
