@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#687d63">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mi CuentaCalorías">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Mi CuentaCalorías</title>
+<style>
+:root{--bg:#f7f4ef;--card:#fff;--text:#292723;--muted:#77736d;--accent:#687d63;--soft:#e1e9dd;--line:#e8e3dc;--danger:#a85d57}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:620px;margin:auto;padding:20px 16px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+h1{font-size:27px;margin:0 0 3px}.sub{color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;margin:12px 0}
+.hero{text-align:center}.date{color:var(--muted);font-size:14px;margin-bottom:8px}.big{font-size:42px;font-weight:800;line-height:1.05}.big small{font-size:15px;color:var(--muted);font-weight:500}
+.bar{height:12px;background:#ece7e0;border-radius:99px;overflow:hidden;margin:14px 0 7px}.fill{height:100%;background:var(--accent);width:0;transition:.25s}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#faf8f5;border-radius:15px;padding:12px;text-align:center}.stat b{font-size:20px}.stat span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+h2{font-size:18px;margin:0 0 11px}.meal{border-top:1px solid var(--line);padding:10px 0}.meal:first-child{border-top:0}.mealhead{display:flex;justify-content:space-between;font-weight:700}.food{display:flex;justify-content:space-between;gap:8px;padding:7px 0;font-size:14px;color:#514d47}.food button{border:0;background:none;color:var(--danger);font-size:21px}
+input,textarea,select,button{font:inherit}input,textarea,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff;min-height:46px}textarea{resize:vertical}
+button{min-height:44px;border:0;border-radius:13px;padding:10px 14px;font-weight:700}.primary{background:var(--accent);color:white;width:100%}.soft{background:var(--soft);color:#3d4a39}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;flex-wrap:wrap}.fav{display:flex;justify-content:space-between;gap:8px;align-items:center;border-top:1px solid var(--line);padding:9px 0}.notice{font-size:12px;color:var(--muted);line-height:1.45}.history div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:9px 0}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><div><h1>Mi CuentaCalorías ❤️</h1><div class="sub">65 kg → objetivo 52 kg</div></div><button id="install" class="soft" hidden>Instalar</button></div>
+
+<section class="card hero">
+<div class="date" id="date"></div>
+<div class="big"><span id="remaining">1.400</span> <small>kcal restantes</small></div>
+<div class="bar"><div class="fill" id="fill"></div></div>
+<div class="sub"><span id="eaten">0</span> kcal consumidas de 1.400</div>
+<div class="grid" style="margin-top:12px"><div class="stat"><b id="protein">0 g</b><span>proteína</span></div><div class="stat"><b id="weight">65 kg</b><span>último peso</span></div></div>
+</section>
+
+<section class="card">
+<h2>🍽️ ¿Qué has comido?</h2>
+<form id="foodForm">
+<textarea id="foodText" rows="3" placeholder="Ej.: 150 g de pollo, 40 g de pan y una ensalada"></textarea>
+<select id="meal" style="margin-top:9px"><option>Desayuno</option><option>Media mañana</option><option>Comida</option><option>Merienda</option><option>Cena</option><option>Picoteo</option></select>
+<button class="primary" style="margin-top:9px">Calcular y añadir</button>
+</form>
+<div id="message" class="notice" aria-live="polite" style="margin-top:9px"></div>
+</section>
+
+<section class="card">
+<div class="top" style="margin-bottom:4px"><h2>📋 Lo que llevas hoy</h2><button id="clear" class="soft">Borrar día</button></div>
+<div id="todayList"></div>
+</section>
+
+<section class="card">
+<h2>⭐ Mis alimentos habituales</h2>
+<div class="row"><input id="favName" placeholder="Alimento"><input id="favKcal" type="number" placeholder="kcal/100 g"></div>
+<button id="addFav" class="soft" style="margin-top:8px">Guardar alimento</button>
+<div id="favList"></div>
+</section>
+
+<section class="card">
+<h2>⚖️ Registrar peso</h2>
+<div class="row"><input id="weightInput" type="number" step="0.1" placeholder="Ej. 64,8"><button id="saveWeight" class="primary">Guardar peso</button></div>
+<div id="history" style="margin-top:8px"></div>
+</section>
+
+<section class="card notice">Objetivo inicial de 1.400 kcal/día. Las estimaciones dependen de cantidades, marcas y preparación. Si me escribes una comida con cantidades concretas, puedo ayudarte a afinar el cálculo.</section>
+</main>
+<script>
+const GOAL=1400, KEY='mc_cal_v2';
+let state=JSON.parse(localStorage.getItem(KEY)||'null')||{days:{},weights:[],favs:[{name:'Mini barrita de cereales',kcal:400},{name:'Jamón serrano',kcal:240},{name:'Pan',kcal:250},{name:'Yogur griego',kcal:120}]};
+const today=()=>new Date().toISOString().slice(0,10);
+const day=()=>state.days[today()]||(state.days[today()]={foods:[]});
+const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const DB={huevo:[78,.13],huevos:[78,.13],pollo:[165,.31],'pechuga de pollo':[165,.31],pavo:[110,.24],'jamón serrano':[240,.31],jamon:[120,.20],pan:[250,.08],'yogur griego':[120,.10],yogur:[70,.04],leche:[50,.034],café:[2,0],cafe:[2,0],plátano:[89,.011],platano:[89,.011],manzana:[52,.003],patata:[77,.02],arroz:[130,.027],pasta:[150,.055],lentejas:[115,.09],ensalada:[25,.015],tomate:[18,.009],aguacate:[160,.02],atún:[116,.26],atun:[116,.26],salmón:[208,.20],salmon:[208,.20],aceite:[884,0],'chocolate negro':[600,.08],galleta:[480,.06],'barrita de cereales':[400,.07],queso:[350,.25]};
+function estimate(text){
+ let t=text.toLowerCase(), total=0, protein=0, found=[];
+ for(const [name,[k100,p100]] of Object.entries(DB)){
+   if(t.includes(name)){
+     let re=new RegExp('(\\\\d+(?:[.,]\\\\d+)?)\\\\s*g[^a-z]*'+name.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&'),'i');
+     let m=t.match(re), grams=m?parseFloat(m[1].replace(',','.')):null;
+     if(!grams){
+       if(name.startsWith('huevo')) grams=50*(t.match(/\\\\b2\\\\b/) ? 2:1);
+       else if(name==='aceite') grams=5;
+       else grams=100;
+     }
+     total+=k100*grams/100; protein+=p100*grams; found.push(name);
+   }
+ }
+ if(!found.length){
+   return {kcal:0,protein:0,found:[],error:'No he reconocido los alimentos. Prueba con algo como “150 g de pollo y 50 g de pan”.'};
+ }
+ return {kcal:Math.round(total),protein:Math.round(protein),found};
+}
+function render(){
+ let d=day(), kcal=d.foods.reduce((a,x)=>a+x.kcal,0), p=d.foods.reduce((a,x)=>a+x.protein,0), rem=Math.max(0,GOAL-kcal);
+ document.getElementById('date').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+ document.getElementById('remaining').textContent=rem.toLocaleString('es-ES');document.getElementById('eaten').textContent=Math.round(kcal);document.getElementById('protein').textContent=Math.round(p)+' g';document.getElementById('fill').style.width=Math.min(100,kcal/GOAL*100)+'%';
+ let w=state.weights.at(-1)?.kg||65;document.getElementById('weight').textContent=w.toFixed(1)+' kg';
+ let groups=['Desayuno','Media mañana','Comida','Merienda','Cena','Picoteo'],html='';
+ for(const m of groups){let a=d.foods.map((x,i)=>({...x,i})).filter(x=>x.meal===m);if(!a.length)continue;html+='<div class="meal"><div class="mealhead"><span>'+m+'</span><span>'+Math.round(a.reduce((s,x)=>s+x.kcal,0))+' kcal</span></div>';for(const x of a)html+='<div class="food"><span>'+esc(x.text)+'</span><span><b>'+x.kcal+' kcal</b> <button data-del="'+x.i+'" aria-label="Eliminar">×</button></span></div>';html+='</div>'}
+ document.getElementById('todayList').innerHTML=html||'<div class="notice">Todavía no has añadido nada.</div>';
+ document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{d.foods.splice(+b.dataset.del,1);save();render()});
+ renderFav();renderHistory();
+}
+function renderFav(){document.getElementById('favList').innerHTML=state.favs.map((f,i)=>'<div class="fav"><span>'+esc(f.name)+' · '+f.kcal+' kcal/100 g</span><button class="soft" data-fav="'+i+'">Usar</button></div>').join('');document.querySelectorAll('[data-fav]').forEach(b=>b.onclick=()=>{let f=state.favs[+b.dataset.fav];document.getElementById('foodText').value='100 g de '+f.name})}
+function renderHistory(){document.getElementById('history').innerHTML=state.weights.slice().reverse().map(x=>'<div><span>'+new Date(x.date+'T12:00:00').toLocaleDateString('es-ES')+'</span><b>'+x.kg.toFixed(1)+' kg</b></div>').join('')||'<div class="notice">Aún no hay pesos registrados.</div>'}
+document.getElementById('foodForm').onsubmit=e=>{e.preventDefault();let text=document.getElementById('foodText').value.trim();if(!text)return;let r=estimate(text),msg=document.getElementById('message');if(r.error){msg.textContent=r.error;return}day().foods.push({text,meal:document.getElementById('meal').value,kcal:r.kcal,protein:r.protein});save();msg.textContent='Añadido: '+r.kcal+' kcal. Reconocido: '+r.found.join(', ')+'.';document.getElementById('foodText').value='';render()};
+document.getElementById('clear').onclick=()=>{if(confirm('¿Borrar todas las comidas de hoy?')){day().foods=[];save();render()}};
+document.getElementById('saveWeight').onclick=()=>{let kg=parseFloat(document.getElementById('weightInput').value.replace(',','.'));if(!Number.isFinite(kg)||kg<30||kg>250){alert('Introduce un peso válido.');return}state.weights.push({date:today(),kg});save();document.getElementById('weightInput').value='';render()};
+document.getElementById('addFav').onclick=()=>{let name=document.getElementById('favName').value.trim(),k=+document.getElementById('favKcal').value;if(!name||!Number.isFinite(k)||k<=0){alert('Introduce alimento y kcal por 100 g.');return}state.favs.push({name,kcal:k});save();document.getElementById('favName').value='';document.getElementById('favKcal').value='';renderFav()};
+let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install').hidden=false});document.getElementById('install').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install').hidden=true}};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+render();
+</script>
+</body>
+</html>
