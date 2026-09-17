@@ -131,6 +131,11 @@ const DB={
  'lentejas':{k100:115,p100:.09},'garbanzos':{k100:164,p100:.089},'ensalada':{k100:25,p100:.015},'tomate':{k100:18,p100:.009},
  'aguacate':{k100:160,p100:.02},'atún':{k100:116,p100:.26},'atun':{k100:116,p100:.26},'salmón':{k100:208,p100:.20},'salmon':{k100:208,p100:.20},
  'aceite':{k100:884,p100:0,unitKcal:44,unitP:0,units:['cucharadita','cucharaditas','cucharada','cucharadas']},
+ 'crackers integrales aldi':{k100:429,p100:.08,unitKcal:26.4,unitP:0.5,units:['cracker','crackers','galleta','galletas','unidad','unidades'],exact:true},
+ 'crackers':{k100:429,p100:.08,unitKcal:26.4,unitP:0.5,units:['cracker','crackers','galleta','galletas','unidad','unidades'],exact:true},
+ 'galleta cracker':{k100:429,p100:.08,unitKcal:26.4,unitP:0.5,units:['cracker','crackers','galleta','galletas','unidad','unidades'],exact:true},
+ 'pan crujiente multicereales aldi':{k100:462,p100:.12,unitKcal:81,unitP:2.1,units:['pieza','piezas','unidad','unidades'],exact:true},
+ 'pan crujiente multicereales':{k100:462,p100:.12,unitKcal:81,unitP:2.1,units:['pieza','piezas','unidad','unidades'],exact:true},
  'galleta':{k100:480,p100:.06},'queso':{k100:350,p100:.25},'frutos secos':{k100:600,p100:.20},'almendras':{k100:579,p100:.21},'avena':{k100:389,p100:.17},
  'lomo embuchado':{k100:300,p100:.32},'lomo embuchado extra':{k100:300,p100:.32},'proteína de cáñamo':{k100:400,p100:.50},'semillas de chía':{k100:486,p100:.17},'chia':{k100:486,p100:.17}
 };
@@ -172,6 +177,10 @@ function renderPortionGuide(){
   ['Yogur griego Aldi','1 yogur (125 g)','156 kcal','etiqueta'],
   ['Frambuesas','100 g','≈ 52 kcal',''],
   ['Chocolate negro','10 g','≈ 60 kcal','depende de la marca'],
+  ['Crackers integrales Aldi','1 cracker','≈ 26 kcal','etiqueta: 429 kcal/100 g'],
+  ['Crackers integrales Aldi','5 crackers','132 kcal','etiqueta'],
+  ['Pan crujiente multicereales Aldi','1 pieza','81 kcal','etiqueta: 17,5 g'],
+  ['Pan crujiente multicereales Aldi','3 piezas','243 kcal','etiqueta'],
   ['Fruta','1 pieza / 100–150 g','≈ 45–100 kcal','según fruta'],
   ['Arroz de pescado Mercadona','1 bandeja (280 g)','594 kcal','ficha actual'],
   ['Arroz de verduras Mercadona','1 bandeja (280 g)','342 kcal','ficha actual'],
@@ -218,5 +227,25 @@ document.getElementById('addFav').onclick=()=>{
 let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install').hidden=false});document.getElementById('install').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install').hidden=true}};
 if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});renderPortionGuide();render();
 </script>
+
+<script>
+/* === ALIMENTOS HABITUALES CORREGIDOS === */
+window.CC_ALIMENTOS_CORREGIDOS = {
+  "crackers integrales aldi": { kcal100: 429, unitKcal: 26.4, unitName: "cracker" },
+  "crackers aldi": { kcal100: 429, unitKcal: 26.4, unitName: "cracker" },
+  "cracker integral aldi": { kcal100: 429, unitKcal: 26.4, unitName: "cracker" },
+  "pan crujiente multicereales aldi": { kcal100: 462, unitKcal: 81, unitName: "pieza" },
+  "pan crujiente aldi": { kcal100: 462, unitKcal: 81, unitName: "pieza" },
+  "multicereales aldi": { kcal100: 462, unitKcal: 81, unitName: "pieza" },
+  "yogur griego aldi": { kcal100: 125, unitKcal: 156, unitName: "envase de 125 g" },
+  "yogur griego natural aldi": { kcal100: 125, unitKcal: 156, unitName: "envase de 125 g" },
+  "pavo": { kcal100: 110, unitKcal: 33, unitName: "30 g" },
+  "frambuesas": { kcal100: 52 },
+  "chocolate negro": { kcal100: 600 },
+  "pan blanco": { kcal100: 250 },
+  "pan integral": { kcal100: 250 }
+};
+</script>
+
 </body>
 </html>
